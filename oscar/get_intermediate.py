@@ -18,6 +18,8 @@ from transformers.pytorch_transformers import AdamW, WarmupLinearSchedule, Warmu
 
 from oscar.utils.tsv_file import TSVFile
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2'
+
 
 class RetrievalDataset(Dataset):
     """ Image/Text Retrieval Dataset"""
@@ -218,6 +220,7 @@ class RetrievalDataset(Dataset):
         return len(self.img_keys) * self.num_captions_per_img
 
 
+"""
 def compute_score_with_logits(logits, labels):
     if logits.shape[1] > 1:
         logits = torch.max(logits, 1)[1].data  # argmax
@@ -249,6 +252,7 @@ def select_samples(args, model, eval_dataset):
                 'img_feats': batch[3],
                 'labels': batch[4]
             }
+"""
 
 
 def get_intermediate_data(args, model, eval_dataset):
@@ -261,10 +265,10 @@ def get_intermediate_data(args, model, eval_dataset):
     logger.info("Evaluation batch size = {}".format(args.eval_batch_size))
     model.eval()
     results = []
-    softmax = nn.Softmax(dim=1)
+    #softmax = nn.Softmax(dim=1)
     limit = 0
     for indexs, batch in tqdm(eval_dataloader):
-        if(limit >= 10):#without limit, it will get all 9766 samples' intermediate data
+        if limit >= 10:  # without limit, it will get all 9766 samples' intermediate data
             break
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
@@ -275,27 +279,14 @@ def get_intermediate_data(args, model, eval_dataset):
                 'img_feats': batch[3],
                 'labels': batch[4]
             }
-            result = bert(model,**inputs)[:1] #intermedate_data
+            result = bert(model, **inputs)[:1]  #intermedate_data
             print("data 1st dimension: %d" %len(result))
             print("data 2rd dimension: %d" %len(result[0]))
             results.append(result)
         limit += 1
     return results
 
-
-def compute_score_with_logits(logits, labels):
-    if logits.shape[1] > 1:
-        logits = torch.max(logits, 1)[1].data  # argm ax
-        scores = logits == labels
-    else:
-        scores = torch.zeros_like(labels).cuda()
-        for i, (logit, label) in enumerate(zip(logits, labels)):
-            logit_ = torch.sigmoid(logit)
-            if (logit_ >= 0.5 and label == 1) or (logit_ < 0.5 and label == 0):
-                scores[i] = 1
-    return scores
-
-
+"""
 def compute_ranks(dataset, results):
     labels = np.array([dataset.get_label(i) for i in range(len(dataset))])
     similarities = np.array([results[i] for i in range(len(dataset))])
@@ -341,6 +332,7 @@ def evaluate(eval_dataset, test_results):
             t2i_accs[0], t2i_accs[1], t2i_accs[2]))
         eval_result["t2i_retrieval"] = {"R@1": t2i_accs[0], "R@5": t2i_accs[1], "R@10": t2i_accs[2]}
     return eval_result
+"""
 
 
 def get_predict_file(args):
@@ -352,6 +344,11 @@ def get_predict_file(args):
     if args.add_od_labels:
         cc.append('wlabels{}'.format(args.od_label_type))
     return op.join(args.eval_model_dir, '{}.results.pt'.format('.'.join(cc)))
+
+
+"""
+needed func. rts
+"""
 
 
 def restore_training_settings(args):
@@ -370,8 +367,14 @@ def restore_training_settings(args):
                 setattr(args, param, train_v)
     return args
 
-def bert(model, input_ids, token_type_ids=None, attention_mask=None, labels=None,
-            position_ids=None, head_mask=None, img_feats=None, encoder_history_states = None):
+
+
+"""
+needed func. bert
+"""
+
+
+def bert(model, input_ids, token_type_ids=None, attention_mask=None, labels=None, position_ids=None, head_mask=None, img_feats=None, encoder_history_states = None):
     if attention_mask is None:
         attention_mask = torch.ones_like(input_ids)
 
@@ -446,8 +449,9 @@ def bert(model, input_ids, token_type_ids=None, attention_mask=None, labels=None
                                    extended_attention_mask, head_mask,
                                    encoder_history_states)
     return encoder_output
-def encoder(model,hidden_states, attention_mask, head_mask=None,
-                encoder_history_states=None):
+
+
+def encoder(model, hidden_states, attention_mask, head_mask=None, encoder_history_states=None):
     all_hidden_states = ()
     all_attentions = ()
     x = 1
@@ -463,7 +467,7 @@ def encoder(model,hidden_states, attention_mask, head_mask=None,
 
         if model.bert.encoder.output_attentions:
             all_attentions = all_attentions + (layer_outputs[1],)
-        if(x==1): #想通过几层encoder，就修改这个，例如4层就x==4
+        if(x==1):  #想通过几层encoder，就修改这个，例如4层就x==4
             break
         else:
             x = x+1
@@ -478,9 +482,11 @@ def encoder(model,hidden_states, attention_mask, head_mask=None,
     if model.bert.encoder.output_attentions:
         outputs = outputs + (all_attentions,)
     return outputs
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", default='/disk2/11810218/Oscar/coco_ir/', type=str, required=False,
+    parser.add_argument("--data_dir", default='./datasets/coco_ir/', type=str, required=False,
                         help="The input data dir with all required files.")
     parser.add_argument("--img_feat_file", default='/disk2/11811112/Oscar/coco_ir/features.tsv', type=str,
                         required=False,
@@ -538,9 +544,9 @@ def main():
                         help="Normalize image features with bertlayernorm")
     parser.add_argument("--img_layer_norm_eps", default=1e-12, type=float,
                         help="The eps in image feature laynorm layer")
-    parser.add_argument("--per_gpu_train_batch_size", default=32, type=int,
+    parser.add_argument("--per_gpu_train_batch_size", default=2, type=int,
                         help="Batch size per GPU/CPU for training.")
-    parser.add_argument("--per_gpu_eval_batch_size", default=64, type=int,
+    parser.add_argument("--per_gpu_eval_batch_size", default=2, type=int,
                         help="Batch size per GPU/CPU for evaluation.")
     parser.add_argument("--output_mode", default='classification', type=str,
                         help="output mode, support classification or regression.")
@@ -568,7 +574,7 @@ def main():
                         help="Save checkpoint every X steps. Will also perform evaluatin.")
     parser.add_argument("--evaluate_during_training", action='store_true',
                         help="Run evaluation during training at each save_steps.")
-    parser.add_argument("--eval_model_dir", type=str, default='',
+    parser.add_argument("--eval_model_dir", type=str, default='./output0320/checkpoint-29-66390/',
                         help="Model directory for evaluation.")
     parser.add_argument("--no_cuda", action='store_true', help="Avoid using CUDA.")
     parser.add_argument('--seed', type=int, default=88, help="random seed for initialization.")
@@ -611,11 +617,13 @@ def main():
         model.to(args.device)
         if args.n_gpu > 1:
             model = torch.nn.DataParallel(model)
-        result = get_intermediate_data(args,model.module,test_dataset) #得到中间数据
+        result = get_intermediate_data(args, model.module, test_dataset) #得到中间数据
         ##test_result = test(args, model, test_dataset)
-        mediate_file = op.basename("mediate_file.txt")
+        mediate_file = op.basename("mediate_file.pt")
         torch.save(result, mediate_file)
         logger.info("Prediction results saved to {}.".format(mediate_file))
+
+
 """ if args.do_eval:
             eval_result = evaluate(test_dataset, test_result)
             result_file = op.splitext(pred_file)[0] + '.eval.json'
