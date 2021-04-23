@@ -619,8 +619,8 @@ def main():
             model = torch.nn.DataParallel(model)
         result = get_intermediate_data(args, model.module, test_dataset) #得到中间数据
         ##test_result = test(args, model, test_dataset)
-        mediate_file = op.basename("mediate_file.pt")
-        torch.save(result, mediate_file)
+        mediate_file = op.basename("mediate_file.txt")
+        torch.save(str(result), mediate_file)
         logger.info("Prediction results saved to {}.".format(mediate_file))
 
 
