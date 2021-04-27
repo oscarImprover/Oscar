@@ -282,6 +282,8 @@ def get_intermediate_data(args, model, eval_dataset):
             result = bert(model, **inputs)[:1]  #intermedate_data
             print("data 1st dimension: %d" %len(result))
             print("data 2rd dimension: %d" %len(result[0]))
+            print("data 3rd dimension: %d" % len(result[0][0]))
+            print("data 4th dimension: %d" % len(result[0][0][0]))
             results.append(result)
         limit += 1
     return results
