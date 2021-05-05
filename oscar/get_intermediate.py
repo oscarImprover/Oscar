@@ -40,6 +40,9 @@ class RetrievalDataset(Dataset):
         self.features = torch.load(feature_file)
         self.captions = torch.load(caption_file)
         self.img_keys = list(self.features.keys())
+        self.img_keys = random.choices(population=self.img_keys, weights=None, cum_weights=None, k=args.random_size)
+        self.captions = {k: json.loads(self.captions[k]) for k in self.img_keys}
+        self.features = {k: self.features[k] for k in self.img_keys}
         if not type(self.captions[self.img_keys[0]]) == list:
             self.captions = {k: json.loads(self.captions[k]) for k in self.img_keys}
         assert len(self.features) == len(self.captions), \
@@ -266,10 +269,9 @@ def get_intermediate_data(args, model, eval_dataset):
     model.eval()
     results = []
     #softmax = nn.Softmax(dim=1)
-    limit = 0
+
+
     for indexs, batch in tqdm(eval_dataloader):
-        if limit >= 10:  # without limit, it will get all 9766 samples' intermediate data
-            break
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             inputs = {
@@ -285,7 +287,6 @@ def get_intermediate_data(args, model, eval_dataset):
             print("data 3rd dimension: %d" % len(result[0][0]))
             print("data 4th dimension: %d" % len(result[0][0][0]))
             results.append(result)
-        limit += 1
     return results
 
 """
@@ -580,6 +581,7 @@ def main():
                         help="Model directory for evaluation.")
     parser.add_argument("--no_cuda", action='store_true', help="Avoid using CUDA.")
     parser.add_argument('--seed', type=int, default=88, help="random seed for initialization.")
+    parser.add_argument("--random_size", type=int, default=1000, help="size of random list")
     args = parser.parse_args()
 
     global logger
