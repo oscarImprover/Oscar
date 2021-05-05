@@ -40,7 +40,7 @@ class RetrievalDataset(Dataset):
         self.features = torch.load(feature_file)
         self.captions = torch.load(caption_file)
         self.img_keys = list(self.features.keys())
-        self.img_keys = random.choices(population=self.img_keys, weights=None, cum_weights=None, k=args.random_size)
+        self.img_keys = random.sample(population=self.img_keys, k=args.random_size)
         self.captions = {k: json.loads(self.captions[k]) for k in self.img_keys}
         self.features = {k: self.features[k] for k in self.img_keys}
         if not type(self.captions[self.img_keys[0]]) == list:
