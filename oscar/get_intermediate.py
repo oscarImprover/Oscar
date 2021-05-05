@@ -40,9 +40,15 @@ class RetrievalDataset(Dataset):
         self.features = torch.load(feature_file)
         self.captions = torch.load(caption_file)
         self.img_keys = list(self.features.keys())
+        """
+        select dataset randomly and store these data
+        """
         self.img_keys = random.sample(population=self.img_keys, k=args.random_size)
         self.captions = {k: json.loads(self.captions[k]) for k in self.img_keys}
         self.features = {k: self.features[k] for k in self.img_keys}
+        torch.save(self.img_keys, 'select_img_train_keys.tsv')
+        torch.save(self.features, 'select_img_train_feats.pt')
+        torch.save(self.captions, 'select_train_caption.pt')
         if not type(self.captions[self.img_keys[0]]) == list:
             self.captions = {k: json.loads(self.captions[k]) for k in self.img_keys}
         assert len(self.features) == len(self.captions), \
